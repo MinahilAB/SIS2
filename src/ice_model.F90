@@ -153,10 +153,26 @@ contains
 !! freezing and melting, precipitation, and transport.
 subroutine update_ice_model_slow(Ice)
   type(ice_data_type), intent(inout) :: Ice !< The publicly visible ice data type.
+  integer :: i, j, k, i2, j2, i_off, j_off
 
   call update_ice_slow_thermo(Ice)
-
   call update_ice_dynamics_trans(Ice)
+
+  ! FABM needs the total instantaneous sea-ice-covered fraction on the same
+  ! slow grid as the ice--ocean flux exchange. SIS2 stores open water in
+  ! category 0 and ice in categories 1:CatIce, so sum only ice categories.
+  if (associated(Ice%ice_fraction)) then
+    if (.not.associated(Ice%sCS)) call SIS_error(FATAL, &
+      'update_ice_model_slow: missing slow SIS2 control structure.')
+    i_off = lbound(Ice%ice_fraction,1) - Ice%sCS%G%isc
+    j_off = lbound(Ice%ice_fraction,2) - Ice%sCS%G%jsc
+    Ice%ice_fraction(:,:) = 0.0
+    do k=1,Ice%sCS%IG%CatIce ; do j=Ice%sCS%G%jsc,Ice%sCS%G%jec ; do i=Ice%sCS%G%isc,Ice%sCS%G%iec
+      i2 = i + i_off ; j2 = j + j_off
+      Ice%ice_fraction(i2,j2) = Ice%ice_fraction(i2,j2) + Ice%sCS%IST%part_size(i,j,k)
+    enddo ; enddo ; enddo
+    Ice%ice_fraction(:,:) = min(1.0, max(0.0, Ice%ice_fraction(:,:)))
+  endif
 
 end subroutine update_ice_model_slow
 

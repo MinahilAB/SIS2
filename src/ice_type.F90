@@ -127,7 +127,8 @@ type ice_data_type !  ice_public_type
   real, pointer, dimension(:,:) :: &
     area => NULL() , &    !< The area of ocean cells [m2].  Land cells have
                           !! a value of 0, so this could also be used as a mask.
-    mi   => NULL()        !< The total ice+snow mass [kg m-2].
+    mi   => NULL(), &     !< The total ice+snow mass [kg m-2].
+    ice_fraction => NULL() !< Total sea-ice-covered area fraction on the slow grid [1].
              ! mi is needed for the wave model. It is introduced here,
              ! because flux_ice_to_ocean cannot handle 3D fields. This may be
              ! removed, if the information on ice thickness can be derived from
@@ -219,6 +220,10 @@ subroutine ice_type_slow_reg_restarts(domain, CatIce, param_file, Ice, &
   call safe_alloc_ptr(Ice%SST_C, isc, iec, jsc, jec)
   call safe_alloc_ptr(Ice%area, isc, iec, jsc, jec)
   call safe_alloc_ptr(Ice%mi, isc, iec, jsc, jec)  !NR
+  ! Export a slow-grid, category-integrated ice area for ocean tracers.
+  ! Unlike part_size, this field is valid on the slow PEs used for the
+  ! SIS2--MOM6 exchange and can therefore be redistributed safely.
+  call safe_alloc_ptr(Ice%ice_fraction, isc, iec, jsc, jec)
 
   if (Ice%sCS%do_brine_plume) then
     call safe_alloc_ptr(Ice%salt_left_behind, isc, iec, jsc, jec)
