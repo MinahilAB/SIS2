@@ -289,6 +289,13 @@ subroutine direct_flux_ice_to_IOB(Time, Ice, IOB, do_thermo)
   if (ASSOCIATED(IOB%v_flux)) IOB%v_flux(:,:) = Ice%flux_v(:,:)
   if (ASSOCIATED(IOB%p     )) IOB%p(:,:) = Ice%p_surf(:,:)
   if (ASSOCIATED(IOB%mi    )) IOB%mi(:,:) = Ice%mi(:,:)
+  ! Use SIS2's dedicated slow-grid total ice area. This keeps direct and
+  ! redistributed coupling paths consistent and avoids fast-grid state data.
+  if (ASSOCIATED(IOB%ice_fraction)) then
+    if (.not.associated(Ice%ice_fraction)) call MOM_error(FATAL, &
+      'direct_flux_ice_to_IOB: missing slow-grid SIS2 ice fraction.')
+    IOB%ice_fraction(:,:) = Ice%ice_fraction(:,:)
+  endif
   if (ASSOCIATED(IOB%stress_mag)) IOB%stress_mag(:,:) = Ice%stress_mag(:,:)
   if (ASSOCIATED(IOB%ustar_berg)) IOB%ustar_berg(:,:) = Ice%ustar_berg(:,:)
   if (ASSOCIATED(IOB%area_berg)) IOB%area_berg(:,:) = Ice%area_berg(:,:)
@@ -305,9 +312,10 @@ subroutine direct_flux_ice_to_IOB(Time, Ice, IOB, do_thermo)
     if (ASSOCIATED(IOB%lprec)) IOB%lprec(:,:) = Ice%lprec(:,:)
     if (ASSOCIATED(IOB%fprec)) IOB%fprec(:,:) = Ice%fprec(:,:)
     if (ASSOCIATED(IOB%runoff)) IOB%runoff(:,:) = Ice%runoff(:,:)
-    if (ASSOCIATED(Ice%runoff_carbon) .and. ASSOCIATED(IOB%runoff_carbon)) then
-      IOB%runoff_carbon(:,:) = Ice%runoff_carbon(:,:)
-    endif
+    ! Compatibility with the fabm-port MOM6 interface: it predates the optional
+    ! carbon-runoff member of ice_ocean_boundary_type. OM_1deg supplies no
+    ! carbon-runoff forcing, so omitting this optional exchange does not alter
+    ! its heat, freshwater, stress, or shortwave coupling.
     if (ASSOCIATED(IOB%calving)) IOB%calving(:,:) = Ice%calving
     if (ASSOCIATED(IOB%runoff_hflx)) IOB%runoff_hflx(:,:) = Ice%runoff_hflx(:,:)
     if (ASSOCIATED(IOB%calving_hflx)) IOB%calving_hflx(:,:) = Ice%calving_hflx(:,:)
@@ -348,8 +356,8 @@ subroutine direct_flux_ice_to_IOB(Time, Ice, IOB, do_thermo)
     call data_override('OCN', 'area_berg',  IOB%area_berg , Time)
   if (ASSOCIATED(IOB%mass_berg) ) &
     call data_override('OCN', 'mass_berg',  IOB%mass_berg , Time)
-  if (ASSOCIATED(IOB%runoff_carbon)) &
-    call data_override('OCN', 'runoff_carbon', IOB%runoff_carbon   , Time)
+  ! See the compatibility note above: this MOM6 interface has no optional
+  ! runoff_carbon field to override.
   ! Override and output extra fluxes of tracers or gasses
   if (do_therm) then
     call coupler_type_data_override('OCN', IOB%fluxes, Time )
